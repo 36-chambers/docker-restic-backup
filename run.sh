@@ -37,7 +37,7 @@ fi
 # Green text
 echo -e "${GREEN}====> Starting volume backup... ${NC}"
 docker volume ls --filter label=backup --format "{{.Name}}" | while read -r volume; do
-    echo "Backing up volume: $volume"
+    echo "${GREEN}==> Backing up volume: $volume${NC}"
 
     # Fetch custom labels from the volume
     pre_command=$(docker volume inspect "$volume" --format '{{ index .Labels "restic.backup.pre-command" }}')
@@ -70,4 +70,4 @@ fi
 
 eval "restic prune ${PRUNE_FLAGS:-}" || echo -e "${RED}Prune failed${NC}"
 
-echo -e "${RED}====> Backup and prune completed. Exiting...${NC}"
+echo -e "${GREEN}====> Backup and prune completed. Exiting...${NC}"
