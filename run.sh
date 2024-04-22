@@ -4,6 +4,8 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+DOCKER_VOLUME_ROOT=${DOCKER_VOLUME_ROOT:-/var/lib/docker/volumes}
+
 set -ueo pipefail
 
 if [ -n "${DEBUG:-}" ]; then
@@ -13,6 +15,11 @@ fi
 # Check if Docker socket is mounted and Docker daemon is accessible
 if ! docker info; then
     echo -e "${RED}Failed to connect to Docker daemon. Please ensure Docker socket is mounted.${NC}"
+    exit 1
+fi
+
+if [ ! -d "${DOCKER_VOLUME_ROOT}" ]; then
+    echo -e "${RED}DOCKER_VOLUME_ROOT is not a valid directory. Either mount it to ${DOCKER_VOLUME_ROOT} or set the environment variable.${NC}"
     exit 1
 fi
 
@@ -38,7 +45,7 @@ docker volume ls --filter label=backup --format "{{.Name}}" | while read -r volu
     backup_flags=$(docker volume inspect "$volume" --format '{{ index .Labels "restic.backup.flags" }}')
 
     # Assume the volume path is under /var/lib/docker/volumes
-    volume_path="/var/lib/docker/volumes/$volume/_data"
+    volume_path="${DOCKER_VOLUME_ROOT}/$volume/_data"
 
     # Pre-command execution
     if [ -n "$pre_command" ]; then
@@ -46,8 +53,7 @@ docker volume ls --filter label=backup --format "{{.Name}}" | while read -r volu
     fi
 
     # Build restic backup command with flags and excludes
-    restic_command="restic backup $backup_flags"
-    restic_command="$restic_command $volume_path"
+    restic_command="restic backup --tag docker.volume=$volume $backup_flags $volume_path"
 
     eval "$restic_command" || echo -e "${RED}Backup failed for $volume${NC}"
 
